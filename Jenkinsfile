@@ -14,28 +14,17 @@ pipeline {
       steps {
         sh "mvn test"
       }
-      post {
-        always {
-          junit 'target/surefire-reports/*.xml'
-          jacoco execPattern: 'target/jacoco.exec'
-        }
-      }
     }
 
     stage('Mutation Tests - PIT') {
       steps {
         sh "mvn org.pitest:pitest-maven:mutationCoverage"
       }
-      post {
-        always {
-          pitmutation mutationStatsFile: '**/target/pit-reports/**/mutations.xml'
-        }
-      }
     }
+
     stage('SonarQube - SAST') {
       steps {
         withSonarQubeEnv('SonarQube') {
-          //sh "mvn sonar:sonar -Dsonar.projectKey=numeric-application -Dsonar.host.url=http://13.232.113.88:9000 -Dsonar.login=c01a9c1f3eb091d74ac607309fc9e581329a10c4"
           sh "mvn sonar:sonar -Dsonar.projectKey=numeric-application -Dsonar.host.url=http://13.232.113.88:9000"
         }
         timeout(time: 2, unit: 'MINUTES') {
@@ -45,20 +34,13 @@ pipeline {
         }
       }
     }
-    
-    
-        stage('Vulnerability Scan - Docker ') {
+
+    stage('Vulnerability Scan - Docker ') {
       steps {
         sh "mvn dependency-check:check"
       }
-      post {
-        always {
-          dependencyCheckPublisher pattern: 'target/dependency-check-report.xml'
-        }
-      }
     }
 
-    
     stage('Docker Build and Push') {
       steps {
         withDockerRegistry([credentialsId: "docker-hub", url: ""]) {
@@ -68,8 +50,7 @@ pipeline {
         }
       }
     }
-    
-    
+
     stage('Kubernetes Deployment - DEV') {
       steps {
         withKubeConfig([credentialsId: 'kubeconfig']) {
@@ -79,6 +60,23 @@ pipeline {
       }
     }
 
+  }
+
+  post {
+    always {
+      junit 'target/surefire-reports/*.xml'
+      jacoco execPattern: 'target/jacoco.exec'
+      pitmutation mutationStatsFile: '**/target/pit-reports/**/mutations.xml'
+      dependencyCheckPublisher pattern: 'target/dependency-check-report.xml'
+    }
+
+    // success {
+
+    // }
+
+    // failure {
+
+    // }
   }
 
 }
